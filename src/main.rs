@@ -9,6 +9,8 @@ use bitcoin::{
     absolute::LockTime,
     consensus::{deserialize, encode::serialize_hex},
     key::{Keypair, Secp256k1, TapTweak},
+    opcodes::all::OP_RETURN,
+    script::Builder,
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::{TaprootBuilder, TaprootSpendInfo},
@@ -317,11 +319,23 @@ fn main() {
                                     script_pubkey: withdraw_address.unwrap().assume_checked().script_pubkey(),
                                 };
 
+
+
+                                let op_return_script = Builder::new()
+                                .push_opcode(OP_RETURN)
+                                .push_slice(b"\xF0\x9F\x90\xB1")
+                                .into_script();
+
+                                let op_return = TxOut {
+                                    value: Amount::from_sat(0),
+                                    script_pubkey: op_return_script,
+                                };
+
                                 let mut unsigned_tx = Transaction {
                                     version: bitcoin::transaction::Version(2),
                                     lock_time: LockTime::ZERO,
                                     input: inputs,
-                                    output: vec![spend],
+                                    output: vec![spend, op_return],
                                 };
 
                                 let secret_key = bitcoin::secp256k1::SecretKey::from_slice(
@@ -329,7 +343,7 @@ fn main() {
                                 ).expect("32 bytes, within curve order");
                                 let keypair = Keypair::from_secret_key(&secp, &secret_key);
 
-                                let signed_tx = happy_spend(
+                                let signed_tx = key_spend(
                                     &mut unsigned_tx,
                                     keypair,
                                     prev_tx,
@@ -371,7 +385,7 @@ fn main() {
 }
 
 /// Simple helper to sign and finalize a key-spend taproot transaction
-fn happy_spend(
+fn key_spend(
     unsigned_tx: &mut Transaction,
     keys: Keypair,
     prev_tx: Vec<TxOut>,
