@@ -10,7 +10,13 @@ use bitcoin::{
     taproot::{TaprootBuilder, TaprootSpendInfo},
 };
 use hex::FromHex;
-use leptos::{mount::mount_to_body, task::spawn_local, view};
+use leptos::{
+    html::{ElementChild, HtmlElement},
+    mount::mount_to_body,
+    prelude::{Get, OnAttribute, create_signal, event_target_value, signal},
+    task::spawn_local,
+    view,
+};
 use log::info;
 use rand::rngs::ThreadRng;
 use reqwasm::http::Request;
@@ -93,138 +99,61 @@ fn main() {
     let taproot_spend_info = builder.finalize(&secp, xonly_public_key).unwrap();
 
     let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), Network::Signet);
+    let address_clone = address.clone();
 
     info!("Address: {}", address);
 
     let encoded = encode('😊', &keypair_bytes);
     info!("Encoded (invisible data behind emoji): {encoded}");
 
-    let decoded_bytes = decode_with_variation_selectors(&encoded);
+    mount_to_body(move || {
+        // Set up a signal to store the user's typed input
+        let (input, set_input) = signal("".to_string());
 
-    info!("Decoded hex: {}", hex::encode(decoded_bytes.clone()));
+        view! {
+                // Everything is inlined in this single view! block
+                <div>
+                    <p>"emojkey: " {move || encoded.to_string()}</p>
+                    <p>"address: " {move || address_clone.to_string()}</p>
 
-    let decoded_array: [u8; 32] = decoded_bytes
-        .try_into()
-        .expect("slice with incorrect length");
-    let scalar = Scalar::from_bytes_mod_order(decoded_array)
-        .non_zero()
-        .expect("scalar is zero");
-    let keypair = schnorr.new_keypair(scalar);
-    let public_key = keypair.public_key().to_xonly_bytes();
+                    // The input field
+                    <input
+                        placeholder="Type something…"
+                        // When user types, update our `input` signal
+                        on:input=move |ev| set_input(event_target_value(&ev))
+                        value=input.get()
+                    />
 
-    let builder = TaprootBuilder::new();
-    let xonly_public_key = bitcoin::XOnlyPublicKey::from_slice(public_key.as_ref()).unwrap();
-    let taproot_spend_info = builder.finalize(&secp, xonly_public_key).unwrap();
+                    // The button to call decode
+                    <button on:click=move |_| {
+                        let decoded_bytes = decode_with_variation_selectors(&input.get());
+                        info!("Decoded hex: {}", hex::encode(decoded_bytes.clone()));
 
-    let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), Network::Signet);
+        let decoded_array: [u8; 32] = decoded_bytes
+            .try_into()
+            .expect("slice with incorrect length");
+        let scalar = Scalar::from_bytes_mod_order(decoded_array)
+            .non_zero()
+            .expect("scalar is zero");
+        let keypair = schnorr.new_keypair(scalar);
+        let public_key = keypair.public_key().to_xonly_bytes();
 
-    info!("Decoded address: {}", address);
+        let builder = TaprootBuilder::new();
+        let xonly_public_key = bitcoin::XOnlyPublicKey::from_slice(public_key.as_ref()).unwrap();
+        let taproot_spend_info = builder.finalize(&secp, xonly_public_key).unwrap();
 
-    //check address balance
+        let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), Network::Signet);
 
-    mount_to_body(|| {
-        view! { <address/> }
-    });
+        info!("Decoded address: {}", address);
 
-    spawn_local(async move {
-        let res_utxo = Request::get(&format!(
-            "https://mempool.space/signet/api/address/{}/utxo",
-            address
-        ))
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+        //check address balance
 
-        let utxos: Vec<Utxo> = serde_json::from_str(&res_utxo).expect("Failed to parse JSON");
-
-        if utxos.is_empty() {
-            info!("No UTXOs found, pls fund address");
-            return;
-        }
-
-        let inputs: Vec<TxIn> = utxos
-            .iter()
-            .map(|utxo| TxIn {
-                previous_output: OutPoint::new(
-                    bitcoin::Txid::from_str(&utxo.txid).expect("Invalid txid format"),
-                    utxo.vout,
-                ),
-                ..Default::default()
-            })
-            .collect();
-
-        info!("Found UTXOs: {:?}. {:?}", inputs.len(), inputs);
-
-        let mut prev_tx = Vec::new();
-
-        for input in inputs.clone() {
-            info!(
-                "Fetching previous tx: {:?}, {:?}",
-                input.previous_output.txid, input.previous_output.vout
-            );
-            let url = format!(
-                "https://mempool.space/signet/api/tx/{}/hex",
-                input.previous_output.txid
-            );
-            let response = Request::get(&url)
-                .send()
-                .await
-                .unwrap()
-                .text()
-                .await
-                .unwrap();
-
-            let tx: Transaction = deserialize(&Vec::<u8>::from_hex(&response).unwrap()).unwrap();
-
-            let mut outpoint: Option<OutPoint> = None;
-            for (i, out) in tx.output.iter().enumerate() {
-                if address.script_pubkey() == out.script_pubkey {
-                    outpoint = Some(OutPoint::new(tx.compute_txid(), i as u32));
-                    break;
-                }
-            }
-
-            let prevout = outpoint.expect("Outpoint must exist in tx");
-
-            prev_tx.push(tx.output[prevout.vout as usize].clone());
-        }
-
-        let total_amount = utxos.iter().map(|utxo| utxo.value).sum::<u64>();
-        let fee = 200;
-
-        let spend = TxOut {
-            value: Amount::from_sat(total_amount - fee),
-            script_pubkey: address.script_pubkey(),
-        };
-
-        let mut unsigned_tx = Transaction {
-            version: bitcoin::transaction::Version(2),
-            lock_time: LockTime::ZERO,
-            input: inputs,
-            output: vec![spend],
-        };
-
-        let secret_key =
-            bitcoin::secp256k1::SecretKey::from_slice(&keypair.secret_key().to_bytes())
-                .expect("32 bytes, within curve order");
-        let keypair = Keypair::from_secret_key(&secp, &secret_key);
-
-        let signed_tx = happy_spend(
-            &mut unsigned_tx,
-            keypair,
-            prev_tx,
-            TapSighashType::All,
-            taproot_spend_info,
-        );
-
-        let serialized_tx = serialize_hex(&signed_tx);
-        info!("Hex Encoded Transaction: {}", serialized_tx);
-
-        let res = Request::post("https://mempool.space/signet/api/tx")
-            .body(serialized_tx)
+        let secp = secp.clone();
+        spawn_local(async move {
+            let res_utxo = Request::get(&format!(
+                "https://mempool.space/signet/api/address/{}/utxo",
+                address
+            ))
             .send()
             .await
             .unwrap()
@@ -232,7 +161,108 @@ fn main() {
             .await
             .unwrap();
 
-        info!("TXID: {:?}", res);
+            let utxos: Vec<Utxo> = serde_json::from_str(&res_utxo).expect("Failed to parse JSON");
+
+            if utxos.is_empty() {
+                info!("No UTXOs found, pls fund address");
+                return;
+            }
+
+            let inputs: Vec<TxIn> = utxos
+                .iter()
+                .map(|utxo| TxIn {
+                    previous_output: OutPoint::new(
+                        bitcoin::Txid::from_str(&utxo.txid).expect("Invalid txid format"),
+                        utxo.vout,
+                    ),
+                    ..Default::default()
+                })
+                .collect();
+
+            info!("Found UTXOs: {:?}. {:?}", inputs.len(), inputs);
+
+            let mut prev_tx = Vec::new();
+
+            for input in inputs.clone() {
+                info!(
+                    "Fetching previous tx: {:?}, {:?}",
+                    input.previous_output.txid, input.previous_output.vout
+                );
+                let url = format!(
+                    "https://mempool.space/signet/api/tx/{}/hex",
+                    input.previous_output.txid
+                );
+                let response = Request::get(&url)
+                    .send()
+                    .await
+                    .unwrap()
+                    .text()
+                    .await
+                    .unwrap();
+
+                let tx: Transaction = deserialize(&Vec::<u8>::from_hex(&response).unwrap()).unwrap();
+
+                let mut outpoint: Option<OutPoint> = None;
+                for (i, out) in tx.output.iter().enumerate() {
+                    if address.script_pubkey() == out.script_pubkey {
+                        outpoint = Some(OutPoint::new(tx.compute_txid(), i as u32));
+                        break;
+                    }
+                }
+
+                let prevout = outpoint.expect("Outpoint must exist in tx");
+
+                prev_tx.push(tx.output[prevout.vout as usize].clone());
+            }
+
+            let total_amount = utxos.iter().map(|utxo| utxo.value).sum::<u64>();
+            let fee = 200;
+
+            let spend = TxOut {
+                value: Amount::from_sat(total_amount - fee),
+                script_pubkey: address.script_pubkey(),
+            };
+
+            let mut unsigned_tx = Transaction {
+                version: bitcoin::transaction::Version(2),
+                lock_time: LockTime::ZERO,
+                input: inputs,
+                output: vec![spend],
+            };
+
+            let secret_key =
+                bitcoin::secp256k1::SecretKey::from_slice(&keypair.secret_key().to_bytes())
+                    .expect("32 bytes, within curve order");
+            let keypair = Keypair::from_secret_key(&secp, &secret_key);
+
+            let signed_tx = happy_spend(
+                &mut unsigned_tx,
+                keypair,
+                prev_tx,
+                TapSighashType::All,
+                taproot_spend_info,
+            );
+
+            let serialized_tx = serialize_hex(&signed_tx);
+            info!("Hex Encoded Transaction: {}", serialized_tx);
+
+            let res = Request::post("https://mempool.space/signet/api/tx")
+                .body(serialized_tx)
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+
+            info!("TXID: {:?}", res);
+        });
+
+                    }>
+                        "Decode!"
+                    </button>
+                </div>
+            }
     });
 }
 
