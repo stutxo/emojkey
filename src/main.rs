@@ -1,5 +1,9 @@
 use std::str::{self, FromStr};
 
+use base64::Engine;
+use qrcode::QrCode;
+use qrcode::render::svg;
+
 use bitcoin::{
     Address, Amount, Network, OutPoint, TapSighashType, Transaction, TxIn, TxOut,
     absolute::LockTime,
@@ -23,6 +27,16 @@ use reqwasm::http::Request;
 use schnorr_fun::{Schnorr, fun::Scalar, nonce};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
+
+#[cfg(debug_assertions)]
+const NETWORK: Network = Network::Signet;
+#[cfg(debug_assertions)]
+const MEMPOOL_API: &str = "https://mempool.space/signet/api";
+
+#[cfg(not(debug_assertions))]
+const NETWORK: Network = Network::Mainnet;
+#[cfg(not(debug_assertions))]
+const MEMPOOL_API: &str = "https://mempool.space/api";
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Utxo {
@@ -87,6 +101,7 @@ fn main() {
         let (txid, set_txid) = signal("".to_string());
         let (emojress_2, set_emojress_2) = signal("".to_string());
         let (error, set_error) = signal("".to_string());
+        let (qr_code, set_qr_code) = signal("".to_string());
 
         view! {
             <div>
@@ -101,6 +116,9 @@ fn main() {
         <div style="margin-top: 1em; text-align: center; min-height: 100px;">
         <p style="margin: 5;">{" "} {encoded}</p>
         <p style="margin: 5;">{" "} {emojress}</p>
+        <br/>
+        <img src=move || qr_code.get() />
+
                 </div>
                     <button on:click=move |_| {
                         let secp = Secp256k1::new();
@@ -114,7 +132,7 @@ fn main() {
                         let builder = TaprootBuilder::new();
                         let xonly_public_key = bitcoin::XOnlyPublicKey::from_slice(public_key.as_ref()).unwrap();
                         let taproot_spend_info = builder.finalize(&secp, xonly_public_key).unwrap();
-                        let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), Network::Signet);
+                        let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), NETWORK);
 
                         info!("Address: {}", address);
 
@@ -124,12 +142,28 @@ fn main() {
                         let random_emoji = emojis[random_index];
                         let encoded_val = encode(random_emoji.chars().next().unwrap(), &keypair_bytes);
 
+                        let code = QrCode::new(address.to_string()).unwrap();
+                        let image = code.render()
+                        .min_dimensions(200, 200)
+                        .dark_color(svg::Color("#800000"))
+                        .light_color(svg::Color("#ffff80"))
+                        .build();
+
+                        let svg_data_url = format!(
+                            "data:image/svg+xml;base64,{}",
+                            base64::engine::general_purpose::STANDARD.encode(image)
+                        );
+
+                        set_qr_code(svg_data_url);
+
+
                         info!("Encoded emoji: {encoded_val}");
                         set_encoded(encoded_val);
                         set_emojress(address.to_string());
                     }>
                         "🔑"
                     </button>
+
                 </div>
 
                 <div style="
@@ -174,7 +208,7 @@ fn main() {
                             let builder = TaprootBuilder::new();
                             let xonly_public_key = bitcoin::XOnlyPublicKey::from_slice(public_key.as_ref()).unwrap();
                             let taproot_spend_info = builder.finalize(&secp, xonly_public_key).unwrap();
-                            let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), Network::Signet);
+                            let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), NETWORK);
 
                             set_emojress_2(address.to_string());
 
@@ -182,7 +216,7 @@ fn main() {
 
                             spawn_local(async move {
                                 let res_utxo = Request::get(&format!(
-                                    "https://mempool.space/signet/api/address/{}/utxo",
+                                    "{MEMPOOL_API}/address/{}/utxo",
                                     address
                                 ))
                                 .send()
@@ -231,7 +265,7 @@ fn main() {
                                           input.previous_output.txid,
                                           input.previous_output.vout);
                                     let url = format!(
-                                        "https://mempool.space/signet/api/tx/{}/hex",
+                                        "{MEMPOOL_API}/tx/{}/hex",
                                         input.previous_output.txid
                                     );
                                     let response = Request::get(&url)
@@ -293,7 +327,11 @@ fn main() {
                                 let serialized_tx = serialize_hex(&signed_tx);
                                 info!("Hex Encoded Transaction: {}", serialized_tx);
 
-                                let res = Request::post("https://mempool.space/signet/api/tx")
+                                let url = format!(
+                                    "{MEMPOOL_API}/tx",
+
+                                );
+                                let res = Request::post(&url)
                                     .body(serialized_tx)
                                     .send()
                                     .await
