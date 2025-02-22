@@ -195,16 +195,18 @@ fn main() {
                                 let utxos: Vec<Utxo> = serde_json::from_str(&res_utxo)
                                     .expect("Failed to parse JSON");
 
-                                    let withdraw_address = Address::from_str(&withdraw_addr.get());
-
-                                    if withdraw_address.is_err() {
-                                        set_error("Invalid withdraw address".to_string());
-                                        return;
-                                    }
 
                                 if utxos.is_empty() {
                                     info!("No UTXOs found, pls fund address");
                                     set_error("No UTXOs found, pls fund address".to_string());
+                                    return;
+                                }
+
+
+                                let withdraw_address = Address::from_str(&withdraw_addr.get());
+
+                                if withdraw_address.is_err() {
+                                    set_error("Invalid withdraw address".to_string());
                                     return;
                                 }
 
