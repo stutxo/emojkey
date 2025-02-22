@@ -300,7 +300,7 @@ fn main() {
 
 
 
-                                let fee = 200;
+                                let fee = 1337;
                                 let spend = TxOut {
                                     value: Amount::from_sat(total_amount - fee),
                                     script_pubkey: withdraw_address.unwrap().assume_checked().script_pubkey(),
