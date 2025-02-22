@@ -167,14 +167,16 @@ fn main() {
                 </div>
 
 
-
+                <br/>
+                <br/>
+                <br/>
+                <br/>
                 <div style="
-                    position: absolute;
-                    top: 80%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    text-align: center;
-                ">
+                position: absolute;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+            ">
                     <input
                         placeholder="sweep emojkey..."
                         on:input=move |ev| set_input(event_target_value(&ev))
