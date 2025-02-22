@@ -34,7 +34,7 @@ const NETWORK: Network = Network::Signet;
 const MEMPOOL_API: &str = "https://mempool.space/signet/api";
 
 #[cfg(not(debug_assertions))]
-const NETWORK: Network = Network::Mainnet;
+const NETWORK: Network = Network::Bitcoin;
 #[cfg(not(debug_assertions))]
 const MEMPOOL_API: &str = "https://mempool.space/api";
 
@@ -114,6 +114,8 @@ fn main() {
             "
         >
         <div style="margin-top: 1em; text-align: center; min-height: 100px;">
+        <p style="margin: 5;">{"not your emojis not your coins"}</p>
+        <br/>
         <p style="margin: 5;">{" "} {encoded}</p>
         <p style="margin: 5;">{" "} {emojress}</p>
         <br/>
