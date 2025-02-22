@@ -81,6 +81,7 @@ fn main() {
 
     mount_to_body(move || {
         let (input, set_input) = signal("".to_string());
+        let (withdraw_addr, set_withdraw_addr) = signal("".to_string());
         let (encoded, set_encoded) = signal("".to_string());
         let (emojress, set_emojress) = signal("".to_string());
         let (txid, set_txid) = signal("".to_string());
@@ -139,11 +140,17 @@ fn main() {
                     text-align: center;
                 ">
                     <input
-                        placeholder="sweep emojkey…"
+                        placeholder="enter emojkey..."
                         on:input=move |ev| set_input(event_target_value(&ev))
                         value=move || input.get()
                         style="width: 300px; padding: 0.5em; font-size: 1em;"
                     />
+                    <input
+                    placeholder="withdraw address..."
+                    on:input=move |ev| set_withdraw_addr(event_target_value(&ev))
+                    value=move || withdraw_addr.get()
+                    style="width: 300px; padding: 0.5em; font-size: 1em;"
+                />
                     <div style="margin-top: 1em;">
                         <button on:click=move |_| {
                             let secp = Secp256k1::new();
@@ -187,6 +194,13 @@ fn main() {
 
                                 let utxos: Vec<Utxo> = serde_json::from_str(&res_utxo)
                                     .expect("Failed to parse JSON");
+
+                                    let withdraw_address = Address::from_str(&withdraw_addr.get());
+
+                                    if withdraw_address.is_err() {
+                                        set_error("Invalid withdraw address".to_string());
+                                        return;
+                                    }
 
                                 if utxos.is_empty() {
                                     info!("No UTXOs found, pls fund address");
@@ -245,10 +259,13 @@ fn main() {
                                 }
 
                                 let total_amount = utxos.iter().map(|utxo| utxo.value).sum::<u64>();
+
+
+
                                 let fee = 200;
                                 let spend = TxOut {
                                     value: Amount::from_sat(total_amount - fee),
-                                    script_pubkey: address.script_pubkey(),
+                                    script_pubkey: withdraw_address.unwrap().assume_checked().script_pubkey(),
                                 };
 
                                 let mut unsigned_tx = Transaction {
