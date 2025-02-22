@@ -204,6 +204,7 @@ fn main() {
                                     .collect();
 
                                 info!("Found UTXOs: {:?}. {:?}", inputs.len(), inputs);
+                                set_error("".to_string());
 
                                 let mut prev_tx = Vec::new();
                                 for input in &inputs {
