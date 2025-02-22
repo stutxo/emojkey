@@ -115,11 +115,6 @@ fn main() {
         >
         <div style="margin-top: 1em; text-align: center; min-height: 100px;">
         <p style="margin: 5;">{"not your emojis not your coins"}</p>
-        <br/>
-        <p style="margin: 5;">{" "} {encoded}</p>
-        <p style="margin: 5;">{" "} {emojress}</p>
-        <br/>
-        <img src=move || qr_code.get() />
 
                 </div>
                     <button on:click=move |_| {
@@ -158,25 +153,30 @@ fn main() {
 
                         set_qr_code(svg_data_url);
 
-
+                        let emojkey = format!("emojkey: {}", encoded_val);
                         info!("Encoded emoji: {encoded_val}");
-                        set_encoded(encoded_val);
+                        set_encoded(emojkey);
                         set_emojress(address.to_string());
                     }>
-                        "🔑"
+                        "create emojkey 🔑"
                     </button>
-
+                    <p style="margin: 5;">{" "} {encoded}</p>
+                    <p style="margin: 5;">{" "} {emojress}</p>
+                    <br/>
+                    <img src=move || qr_code.get() />
                 </div>
+
+
 
                 <div style="
                     position: absolute;
-                    top: 50%;
+                    top: 80%;
                     left: 50%;
                     transform: translate(-50%, -50%);
                     text-align: center;
                 ">
                     <input
-                        placeholder="enter emojkey..."
+                        placeholder="sweep emojkey..."
                         on:input=move |ev| set_input(event_target_value(&ev))
                         value=move || input.get()
                         style="width: 300px; padding: 0.5em; font-size: 1em;"
