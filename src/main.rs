@@ -161,7 +161,17 @@ fn main() {
                         "create emojkey 🔑"
                     </button>
                     <p style="margin: 5;">{" "} {encoded}</p>
-                    <p style="margin: 5;">{" "} {emojress}</p>
+                    <p
+                                style="
+                                    margin: 5px;
+                                    white-space: normal;
+                                    word-wrap: break-word;
+                                    overflow-wrap: break-word;
+                                    max-width: 90%;
+                                "
+                    >
+                    {emojress}
+                    </p>
                     <br/>
                     <img src=move || qr_code.get() />
                 </div>
