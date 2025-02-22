@@ -11,9 +11,9 @@ use bitcoin::{
 };
 use hex::FromHex;
 use leptos::{
-    html::{ElementChild, HtmlElement},
+    html::ElementChild,
     mount::mount_to_body,
-    prelude::{Get, OnAttribute, create_signal, event_target_value, signal},
+    prelude::{Get, OnAttribute, event_target_value, signal},
     task::spawn_local,
     view,
 };
