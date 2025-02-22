@@ -174,6 +174,7 @@ fn main() {
                     </p>
                     <br/>
                     <img src=move || qr_code.get() />
+                    <br/>
                 </div>
 
 
