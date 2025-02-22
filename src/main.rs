@@ -298,8 +298,6 @@ fn main() {
 
                                 let total_amount = utxos.iter().map(|utxo| utxo.value).sum::<u64>();
 
-
-
                                 let fee = 1337;
                                 let spend = TxOut {
                                     value: Amount::from_sat(total_amount - fee),
