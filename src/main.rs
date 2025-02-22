@@ -84,6 +84,7 @@ fn main() {
         let (encoded, set_encoded) = signal("".to_string());
         let (emojress, set_emojress) = signal("".to_string());
         let (txid, set_txid) = signal("".to_string());
+        let (emojress_2, set_emojress_2) = signal("".to_string());
         let (error, set_error) = signal("".to_string());
 
         view! {
@@ -167,6 +168,8 @@ fn main() {
                             let xonly_public_key = bitcoin::XOnlyPublicKey::from_slice(public_key.as_ref()).unwrap();
                             let taproot_spend_info = builder.finalize(&secp, xonly_public_key).unwrap();
                             let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), Network::Signet);
+
+                            set_emojress_2(address.to_string());
 
                             info!("Decoded address: {}", address);
 
@@ -288,6 +291,7 @@ fn main() {
                             "🧹"
                         </button>
                     </div>
+                    <p style="margin-top: 1em;">{""} {emojress_2}</p>
                     <p style="margin-top: 1em;">{""} {txid}</p>
                     <p style="margin-top: 1em; color: red;">{error}</p>
                 </div>
