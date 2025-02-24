@@ -35,11 +35,15 @@ use sha2::Sha256;
 const NETWORK: Network = Network::Signet;
 #[cfg(debug_assertions)]
 const MEMPOOL_API: &str = "https://mempool.space/signet/api";
+#[cfg(debug_assertions)]
+const MEMPOOL_TX: &str = "https://mempool.space/signet/tx";
 
 #[cfg(not(debug_assertions))]
 const NETWORK: Network = Network::Bitcoin;
 #[cfg(not(debug_assertions))]
 const MEMPOOL_API: &str = "https://mempool.space/api";
+#[cfg(not(debug_assertions))]
+const MEMPOOL_TX: &str = "https://mempool.space/tx";
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Utxo {
@@ -165,16 +169,16 @@ fn main() {
               "
             >
 
-            <p style="margin-bottom: 1rem;">"not your emojis not your coins"</p>
-
                 <div
                   style="
                     font-size: 32px;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
+
                   "
                 >
+                    "emojkey: "
                     {emoji}
                     <button
                     style="margin-left: 0.5em; font-size: 15px;"
@@ -205,16 +209,23 @@ fn main() {
                 flex-wrap: wrap;
                 align-items: center;
                 justify-content: center;
+                width: 300px;
+                  overflow-wrap: anywhere;
+                text-align: center;
               "
             >
-                <span style="margin-right: 0.5em; font-weight: bold;">"emojress:"</span>
-                <span style="
-                    word-wrap: break-word;
-                    overflow-wrap: anywhere;
-                    text-align: left;
-                ">
-                    {emojress}
-                </span>
+            <span style="margin-right: 0.5em; font-weight: bold;">
+            "emojress::"
+            {emojress}
+        </span>
+        <span
+            style="
+
+
+            "
+        >
+
+        </span>
             </div>
 
             <img
@@ -417,8 +428,10 @@ fn main() {
                                     .await
                                     .unwrap();
 
+
+
                                 info!("TXID: {:?}", res);
-                                let txid = format!("emojkey has been swept!: txid: {}", res);
+                                let txid = format!("emojkey has been swept!: {}/{}", MEMPOOL_TX, res);
                                 set_txid(txid);
                             });
                         }>
