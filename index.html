@@ -37,6 +37,16 @@
     </style>
 </head>
 
+<script>
+    window.copyToClipboard = function (text) {
+        navigator.clipboard.writeText(text).then(function () {
+            alert('emojkey copied to clipboard! (keep this secret, keep this safe)');
+        }, function (err) {
+            console.error('Could not copy text: ', err);
+        });
+    }
+</script>
+
 <body></body>
 
 </html>

@@ -1,6 +1,7 @@
 use std::str::{self, FromStr};
 
 use base64::Engine;
+use js_sys::wasm_bindgen::{JsCast, JsValue};
 use qrcode::QrCode;
 use qrcode::render::svg;
 
@@ -91,6 +92,50 @@ fn decode_with_variation_selectors(s: &str) -> Vec<u8> {
     result
 }
 
+fn create_emojkey(
+    set_qr_code: impl Fn(String) + 'static,
+    set_emoji: impl Fn(String) + 'static,
+    set_emojress: impl Fn(String) + 'static,
+) {
+    let secp = Secp256k1::new();
+    let nonce_gen = nonce::Synthetic::<Sha256, nonce::GlobalRng<ThreadRng>>::default();
+    let schnorr = Schnorr::<Sha256, _>::new(nonce_gen);
+
+    let keypair = schnorr.new_keypair(Scalar::random(&mut rand::thread_rng()));
+    let keypair_bytes = keypair.secret_key().to_bytes();
+    let public_key = keypair.public_key().to_xonly_bytes();
+
+    let builder = TaprootBuilder::new();
+    let xonly_public_key = bitcoin::XOnlyPublicKey::from_slice(public_key.as_ref()).unwrap();
+    let taproot_spend_info = builder.finalize(&secp, xonly_public_key).unwrap();
+    let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), NETWORK);
+
+    info!("Address: {}", address);
+
+    let emojis = ["🥪", "😂", "🤔", "🐱", "🚀", "👍", "💩", "🐸"];
+    let mut rng = rand::thread_rng();
+    let random_index = rng.gen_range(0..emojis.len());
+    let random_emoji = emojis[random_index];
+    let encoded_val = encode(random_emoji.chars().next().unwrap(), &keypair_bytes);
+
+    let code = QrCode::new(address.to_string()).unwrap();
+    let image = code
+        .render()
+        .min_dimensions(200, 200)
+        .dark_color(svg::Color("#800000"))
+        .light_color(svg::Color("#ffff80"))
+        .build();
+
+    let svg_data_url = format!(
+        "data:image/svg+xml;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(image)
+    );
+
+    set_qr_code(svg_data_url);
+    set_emoji(encoded_val);
+    set_emojress(address.to_string());
+}
+
 fn main() {
     _ = console_log::init_with_level(log::Level::Debug);
     console_error_panic_hook::set_once();
@@ -98,103 +143,108 @@ fn main() {
     mount_to_body(move || {
         let (input, set_input) = signal("".to_string());
         let (withdraw_addr, set_withdraw_addr) = signal("".to_string());
-        let (encoded, set_encoded) = signal("".to_string());
+        let (emoji, set_emoji) = signal("".to_string());
         let (emojress, set_emojress) = signal("".to_string());
         let (txid, set_txid) = signal("".to_string());
         let (emojress_2, set_emojress_2) = signal("".to_string());
         let (error, set_error) = signal("".to_string());
         let (qr_code, set_qr_code) = signal("".to_string());
 
+        create_emojkey(set_qr_code, set_emoji, set_emojress);
         view! {
-            <div>
+
             <div
-            style="
-                margin-top: 1em;
+              style="
+                max-width: 600px;
+                margin: 0 auto;
+                text-align: center;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-            "
-        >
-        <div style="margin-top: 1em; text-align: center; min-height: 100px;">
-        <p style="margin: 5;">{"not your emojis not your coins"}</p>
+                padding: 1rem;
+              "
+            >
 
-                </div>
-                    <button on:click=move |_| {
-                        let secp = Secp256k1::new();
-                        let nonce_gen = nonce::Synthetic::<Sha256, nonce::GlobalRng<ThreadRng>>::default();
-                        let schnorr = Schnorr::<Sha256, _>::new(nonce_gen);
+            <p style="margin-bottom: 1rem;">"not your emojis not your coins"</p>
 
-                        let keypair = schnorr.new_keypair(Scalar::random(&mut rand::thread_rng()));
-                        let keypair_bytes = keypair.secret_key().to_bytes();
-                        let public_key = keypair.public_key().to_xonly_bytes();
+                <div
+                  style="
+                    font-size: 32px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                  "
+                >
+                    {emoji}
+                    <button
+                    style="margin-left: 0.5em; font-size: 15px;"
+                    on:click=move |_| {
+                        let emoji_text = emoji.get();
+                        let window = web_sys::window().unwrap();
+                        let func = js_sys::Reflect::get(
+                            &window,
+                            &JsValue::from_str("copyToClipboard")
+                        ).unwrap();
+                        let func = func.dyn_into::<js_sys::Function>().unwrap();
+                        js_sys::Reflect::apply(
+                            &func,
+                            &window,
+                            &js_sys::Array::of1(&JsValue::from_str(&emoji_text))
+                        ).unwrap();
+                    }
+                >
+                    "📋"
+                </button>
+            </div>
 
-                        let builder = TaprootBuilder::new();
-                        let xonly_public_key = bitcoin::XOnlyPublicKey::from_slice(public_key.as_ref()).unwrap();
-                        let taproot_spend_info = builder.finalize(&secp, xonly_public_key).unwrap();
-                        let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), NETWORK);
 
-                        info!("Address: {}", address);
-
-                        let emojis = ["🥪", "😂", "🤔", "🐱", "🚀", "👍", "💩", "🐸"];
-                        let mut rng = rand::thread_rng();
-                        let random_index = rng.gen_range(0..emojis.len());
-                        let random_emoji = emojis[random_index];
-                        let encoded_val = encode(random_emoji.chars().next().unwrap(), &keypair_bytes);
-
-                        let code = QrCode::new(address.to_string()).unwrap();
-                        let image = code.render()
-                        .min_dimensions(200, 200)
-                        .dark_color(svg::Color("#800000"))
-                        .light_color(svg::Color("#ffff80"))
-                        .build();
-
-                        let svg_data_url = format!(
-                            "data:image/svg+xml;base64,{}",
-                            base64::engine::general_purpose::STANDARD.encode(image)
-                        );
-
-                        set_qr_code(svg_data_url);
-
-                        let emojkey = format!("emojkey: {}", encoded_val);
-                        info!("Encoded emoji: {encoded_val}");
-                        set_encoded(emojkey);
-                        set_emojress(address.to_string());
-                    }>
-                        "create emojkey 🔑"
-                    </button>
-                    <p style="margin: 5;">{" "} {encoded}</p>
-                    <p
-                                style="
-                                    margin: 5px;
-                                    white-space: normal;
-                                    word-wrap: break-word;
-                                    overflow-wrap: break-word;
-                                    max-width: 90%;
-                                "
-                    >
+            <div style="font-size: 20px; margin-top: 1rem;">
+            <div
+              style="
+                display: inline-flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: center;
+              "
+            >
+                <span style="margin-right: 0.5em; font-weight: bold;">"emojress:"</span>
+                <span style="
+                    word-wrap: break-word;
+                    overflow-wrap: anywhere;
+                    text-align: left;
+                ">
                     {emojress}
-                    </p>
-                    <br/>
-                    <img src=move || qr_code.get() />
-                    <br/>
-                </div>
+                </span>
+            </div>
+
+            <img
+              src=move || qr_code.get()
+              style="
+                margin: 1rem auto;
+                display: block;
+                max-width: 200px;
+              "
+            />
+
+            <button
+                style="margin-top: 1rem;"
+                on:click=move |_| {
+                    create_emojkey(set_qr_code, set_emoji, set_emojress);
+                }
+            >
+                "new emojkey 🔑"
+            </button>
+        </div>
 
 
-                <br/>
-                <br/>
-                <br/>
-                <br/>
-                <div style="
-                position: absolute;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                text-align: center;
-            ">
-                    <input
-                        placeholder="sweep emojkey..."
+            // Sweep section
+            <div style="margin-top: 2em; width: 100%; display: flex; flex-direction: column; align-items: center;">
+            <input
+                style="width: 80%; max-width: 300px; padding: 0.5em; font-size: 1em; margin-bottom: 1em;"
+                placeholder="sweep emojkey..."
                         on:input=move |ev| set_input(event_target_value(&ev))
                         value=move || input.get()
-                        style="width: 300px; padding: 0.5em; font-size: 1em;"
+
                     />
                     <input
                     placeholder="withdraw address..."
@@ -375,16 +425,26 @@ fn main() {
                             "🧹"
                         </button>
                     </div>
-                    <p style="margin-top: 1em;">{""} {emojress_2}</p>
-                    <p style="margin-top: 1em;">{""} {txid}</p>
-                    <p style="margin-top: 1em; color: red;">{error}</p>
+                    <div
+                    style="
+                        margin-top: 1em;
+                        font-size: 0.85rem;    /* smaller text */
+                        word-wrap: break-word; /* allow wrapping on long strings */
+                        overflow-wrap: anywhere;
+                        text-align: center;
+                    "
+                >
+                    <p style="margin: 0.5em 0;">{emojress_2}</p>
+                    <p style="margin: 0.5em 0;">{txid}</p>
+                    <p style="margin: 0.5em 0; color: red;">{error}</p>
+                </div>
+
                 </div>
             </div>
         }
     });
 }
 
-/// Simple helper to sign and finalize a key-spend taproot transaction
 fn key_spend(
     unsigned_tx: &mut Transaction,
     keys: Keypair,

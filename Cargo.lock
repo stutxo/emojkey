@@ -578,6 +578,7 @@ dependencies = [
  "console_log",
  "hex",
  "image",
+ "js-sys",
  "leptos",
  "log",
  "qrcode",
@@ -587,6 +588,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "web-sys",
 ]
 
 [[package]]

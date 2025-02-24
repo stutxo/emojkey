@@ -19,6 +19,8 @@ serde_json = "1.0"
 qrcode = "0.14.1"
 image = "0.25.5"
 base64 = "0.22.1"
+web-sys = "0.3.77"
+js-sys = "0.3.77"
 
 [profile.release]
 lto = true
