@@ -116,7 +116,7 @@ fn create_emojkey(
 
     info!("Address: {}", address);
 
-    let emojis = ["🥪", "😂", "🤔", "🐱", "🚀", "👍", "💩", "🐸"];
+    let emojis = ["🥪", "😂", "🤔", "🐱", "🚀", "👍", "💩", "🐸", "🔑"];
     let mut rng = rand::thread_rng();
     let random_index = rng.gen_range(0..emojis.len());
     let random_emoji = emojis[random_index];

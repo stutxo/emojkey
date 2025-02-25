@@ -8,8 +8,8 @@
     <title>emojkey 😂󠄝󠅰󠄞󠄝󠅿󠇉󠅻󠅶︍󠆺󠆜󠄦󠆒󠇐󠄆󠄖︅󠄋󠅞︋󠅛︃󠅳󠄕󠄍󠇠󠅉󠄭󠅗󠅀󠆶󠅾</title>
     
 <script type="module">
-import init, * as bindings from './emojkey-de993cadec25825a.js';
-const wasm = await init({ module_or_path: './emojkey-de993cadec25825a_bg.wasm' });
+import init, * as bindings from './emojkey-971ad095609f15bd.js';
+const wasm = await init({ module_or_path: './emojkey-971ad095609f15bd_bg.wasm' });
 
 
 window.wasmBindings = bindings;
@@ -24,6 +24,8 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
     
     <link rel="stylesheet" href="https://unpkg.com/open-props/normalize.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/open-props/buttons.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+
     <style>
         p {
             margin: var(--size-2);
@@ -45,8 +47,27 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
             text-align: center;
             margin-top: var(--size-2);
         }
+
+        header {
+            width: 65%;
+            text-align: right;
+            padding: 5px 10px;
+            /* Adjust padding as needed */
+        }
+
+        .github-button {
+            display: inline-block;
+            padding: 10px 20px;
+            /* background-color: white; */
+            /* Changed to white */
+            color: white;
+            /* Text color changed to black for contrast */
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 20px;
+        }
     </style>
-<link rel="modulepreload" href="./emojkey-de993cadec25825a.js" crossorigin="anonymous" integrity="sha384-olNbZclG2nhXhMGMKDioA4oUjfuw+Ff8iTXk8wP+vISZS0YQBTTiS3rs60h2G/n6"><link rel="preload" href="./emojkey-de993cadec25825a_bg.wasm" crossorigin="anonymous" integrity="sha384-po8xpPJRgSnz/PpJU7ey1Mh5vX8B/zHOG7Fn97PGI9nJvLGe5lKar7goG2oIUIGO" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="./emojkey-971ad095609f15bd.js" crossorigin="anonymous" integrity="sha384-olNbZclG2nhXhMGMKDioA4oUjfuw+Ff8iTXk8wP+vISZS0YQBTTiS3rs60h2G/n6"><link rel="preload" href="./emojkey-971ad095609f15bd_bg.wasm" crossorigin="anonymous" integrity="sha384-2/APqyEkW30eXF6MTfoeOV3NFMK98tFUjyunrlnZnzzGIRs4gSy3+QixoGhBS2Kv" as="fetch" type="application/wasm"></head>
 
 <script>
     window.copyToClipboard = function (text) {
@@ -58,6 +79,12 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
     }
 </script>
 
-<body></body>
+<body>
+    <header>
+        <a href="https://github.com/stutxo/emojkey" class="github-button" target="_blank"><i class="fab fa-github"></i>
+        </a>
+    </header>
+</body>
+
 
 </html>
